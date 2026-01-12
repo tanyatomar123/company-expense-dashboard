@@ -1,37 +1,36 @@
 # AI EXPENSE DASHBOARD (WITH SUPERVISOR, SITE & ADVANCED ANALYTICS)
+import streamlit as st
 import streamlit_authenticator as stauth
-import yaml
 
-users = {
-    "credentials": {
-        "usernames": {
-            "admin": {
-                "name": "Admin",
-                "password": stauth.Hasher(["admin123"]).generate()[0]
-            },
-            "manager": {
-                "name": "Manager",
-                "password": stauth.Hasher(["manager123"]).generate()[0]
-            }
+st.set_page_config(page_title="AI Expense Dashboard", layout="wide")
+
+credentials = {
+    "usernames": {
+        "admin": {
+            "name": "Admin",
+            "password": "$2b$12$KIX1n4E9CkP8p8G9wJ6dRe2Zl3dR0kQZ0PpZg9n0p5bZ0zKZy"
+        },
+        "manager": {
+            "name": "Manager",
+            "password": "$2b$12$KIX1n4E9CkP8p8G9wJ6dRe2Zl3dR0kQZ0PpZg9n0p5bZ0zKZy"
         }
-    },
-    "cookie": {
-        "expiry_days": 1,
-        "key": "expense_key",
-        "name": "expense_dashboard"
     }
 }
 
 authenticator = stauth.Authenticate(
-    users["credentials"],
-    users["cookie"]["name"],
-    users["cookie"]["key"],
-    users["cookie"]["expiry_days"]
+    credentials,
+    "expense_dashboard",
+    "auth_key",
+    cookie_expiry_days=1
 )
 
 name, auth_status, username = authenticator.login("Company Login", "main")
 
-if not auth_status:
+if auth_status is False:
+    st.error("Invalid username or password")
+    st.stop()
+elif auth_status is None:
+    st.warning("Please login")
     st.stop()
 
 st.success(f"Welcome {name}")
