@@ -1,4 +1,40 @@
 # AI EXPENSE DASHBOARD (WITH SUPERVISOR, SITE & ADVANCED ANALYTICS)
+import streamlit_authenticator as stauth
+import yaml
+
+users = {
+    "credentials": {
+        "usernames": {
+            "admin": {
+                "name": "Admin",
+                "password": stauth.Hasher(["admin123"]).generate()[0]
+            },
+            "manager": {
+                "name": "Manager",
+                "password": stauth.Hasher(["manager123"]).generate()[0]
+            }
+        }
+    },
+    "cookie": {
+        "expiry_days": 1,
+        "key": "expense_key",
+        "name": "expense_dashboard"
+    }
+}
+
+authenticator = stauth.Authenticate(
+    users["credentials"],
+    users["cookie"]["name"],
+    users["cookie"]["key"],
+    users["cookie"]["expiry_days"]
+)
+
+name, auth_status, username = authenticator.login("Company Login", "main")
+
+if not auth_status:
+    st.stop()
+
+st.success(f"Welcome {name}")
 
 import streamlit as st
 import pandas as pd
@@ -196,3 +232,5 @@ if menu == "Data Table":
             save_data(pd.DataFrame(columns=expenses.columns))
             st.success("All data cleared")
             st.rerun()
+
+
