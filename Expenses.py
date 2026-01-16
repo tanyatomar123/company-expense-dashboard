@@ -1,39 +1,4 @@
-# AI EXPENSE DASHBOARD (WITH SUPERVISOR, SITE & ADVANCED ANALYTICS)
-import streamlit as st
-import streamlit_authenticator as stauth
-
-st.set_page_config(page_title="AI Expense Dashboard", layout="wide")
-
-credentials = {
-    "usernames": {
-        "admin": {
-            "name": "Admin",
-            "password": "$2b$12$KIX1n4E9CkP8p8G9wJ6dRe2Zl3dR0kQZ0PpZg9n0p5bZ0zKZy"
-        },
-        "manager": {
-            "name": "Manager",
-            "password": "$2b$12$KIX1n4E9CkP8p8G9wJ6dRe2Zl3dR0kQZ0PpZg9n0p5bZ0zKZy"
-        }
-    }
-}
-
-authenticator = stauth.Authenticate(
-    credentials,
-    "expense_dashboard",
-    "auth_key",
-    cookie_expiry_days=1
-)
-
-name, auth_status, username = authenticator.login("Company Login", "main")
-
-if auth_status is False:
-    st.error("Invalid username or password")
-    st.stop()
-elif auth_status is None:
-    st.warning("Please login")
-    st.stop()
-
-st.success(f"Welcome {name}")
+# AI EXPENSE DASHBOARD (AUTO ANALYTICS – COMPANY READY)
 
 import streamlit as st
 import pandas as pd
@@ -42,9 +7,13 @@ from datetime import datetime
 
 st.set_page_config(page_title="AI Expense Dashboard", layout="wide")
 
+# -------------------------------
+# Load & Save Data
+# -------------------------------
 def load_data():
     try:
-        return pd.read_csv("expenses.csv")
+        df = pd.read_csv("expenses.csv", parse_dates=["Date"])
+        return df
     except:
         return pd.DataFrame(columns=[
             "Date", "Category", "Amount",
@@ -56,15 +25,11 @@ def save_data(df):
 
 expenses = load_data()
 
+# -------------------------------
+# Auto Column Mapping
+# -------------------------------
 def clean_uploaded_data(df):
     df_clean = pd.DataFrame()
-
-    date_cols = ["date", "day", "purchase date", "entry date"]
-    amount_cols = ["amount", "price", "cost", "expense"]
-    category_cols = ["category", "type", "label"]
-    supervisor_cols = ["supervisor", "manager", "incharge"]
-    site_cols = ["site", "location", "project"]
-    summary_cols = ["summary", "description", "details", "remark", "note"]
 
     col_map = {c.lower(): c for c in df.columns}
 
@@ -74,156 +39,183 @@ def clean_uploaded_data(df):
                 return col_map[n]
         return None
 
-    if find_col(date_cols):
-        df_clean["Date"] = pd.to_datetime(df[find_col(date_cols)], errors="coerce")
-    else:
-        df_clean["Date"] = pd.NaT
+    df_clean["Date"] = pd.to_datetime(
+        df[find_col(["date", "day", "purchase date", "entry date"])],
+        errors="coerce"
+    )
 
-    if find_col(amount_cols):
-        df_clean["Amount"] = pd.to_numeric(df[find_col(amount_cols)], errors="coerce")
-    else:
-        df_clean["Amount"] = 0
+    df_clean["Amount"] = pd.to_numeric(
+        df[find_col(["amount", "price", "cost", "expense"])],
+        errors="coerce"
+    )
 
-    df_clean["Category"] = df[find_col(category_cols)] if find_col(category_cols) else "Other"
-    df_clean["Supervisor"] = df[find_col(supervisor_cols)] if find_col(supervisor_cols) else "Unknown"
-    df_clean["Site"] = df[find_col(site_cols)] if find_col(site_cols) else "Unknown"
-    df_clean["Summary"] = df[find_col(summary_cols)] if find_col(summary_cols) else ""
+    df_clean["Category"] = df[find_col(["category", "type", "label"])] if find_col(["category", "type", "label"]) else "Other"
+    df_clean["Supervisor"] = df[find_col(["supervisor", "manager", "incharge"])] if find_col(["supervisor", "manager", "incharge"]) else "Unknown"
+    df_clean["Site"] = df[find_col(["site", "location", "project"])] if find_col(["site", "location", "project"]) else "Unknown"
+    df_clean["Summary"] = df[find_col(["summary", "description", "details", "remark", "note"])] if find_col(["summary", "description", "details", "remark", "note"]) else ""
 
-    return df_clean.dropna(subset=["Date", "Amount"], how="all")
+    return df_clean.dropna(subset=["Date", "Amount"])
 
+# -------------------------------
+# Sidebar Navigation
+# -------------------------------
 st.sidebar.title("📊 AI Expense Dashboard")
 menu = st.sidebar.radio(
     "Navigation",
     ["Add Expense", "Upload Expense File", "View Dashboard", "Data Table"]
 )
 
+# -------------------------------
+# ADD EXPENSE
+# -------------------------------
 if menu == "Add Expense":
     st.header("➕ Add New Expense")
 
-    col1, col2, col3 = st.columns(3)
+    c1, c2, c3 = st.columns(3)
 
-    with col1:
-        date = st.date_input("Date", datetime.now())
-        amount = st.number_input("Amount (₹)", min_value=0.0, step=10.0)
+    with c1:
+        date = st.date_input("Date", datetime.today())
+        amount = st.number_input("Amount (₹)", min_value=0.0)
 
-    with col2:
-        category = st.selectbox(
-            "Category",
-            ["Food", "Travel", "Fuel", "Shopping", "Bills", "Other"]
-        )
-        supervisor = st.text_input("Supervisor Name")
+    with c2:
+        category = st.selectbox("Category", ["Food", "Travel", "Fuel", "Shopping", "Bills", "Other"])
+        supervisor = st.text_input("Supervisor")
 
-    with col3:
-        site = st.text_input("Site Name")
-        summary = st.text_input("Summary / Description")
+    with c3:
+        site = st.text_input("Site")
+        summary = st.text_input("Summary")
 
     if st.button("Save Expense"):
-        new_row = pd.DataFrame({
-            "Date": [date],
-            "Category": [category],
-            "Amount": [amount],
-            "Supervisor": [supervisor],
-            "Site": [site],
-            "Summary": [summary]
-        })
-
+        new_row = pd.DataFrame([{
+            "Date": date,
+            "Category": category,
+            "Amount": amount,
+            "Supervisor": supervisor,
+            "Site": site,
+            "Summary": summary
+        }])
         expenses = pd.concat([expenses, new_row], ignore_index=True)
         save_data(expenses)
-        st.success("Expense Saved Successfully ✅")
+        st.success("Expense saved successfully ✅")
         st.rerun()
 
+# -------------------------------
+# UPLOAD FILE
+# -------------------------------
 if menu == "Upload Expense File":
-    st.header("📤 Upload Expense Sheet")
+    st.header("📤 Upload Expense File")
 
-    uploaded_file = st.file_uploader(
-        "Upload CSV or Excel file",
-        type=["csv", "xlsx", "xls"]
-    )
+    uploaded_file = st.file_uploader("Upload CSV / Excel", type=["csv", "xlsx"])
 
     if uploaded_file:
-        try:
-            if uploaded_file.name.endswith(".csv"):
-                df_upload = pd.read_csv(uploaded_file)
-            else:
-                df_upload = pd.read_excel(uploaded_file, engine="openpyxl")
+        if uploaded_file.name.endswith(".csv"):
+            df_upload = pd.read_csv(uploaded_file)
+        else:
+            df_upload = pd.read_excel(uploaded_file)
 
-            df_upload.columns = df_upload.columns.map(str)
-            cleaned_df = clean_uploaded_data(df_upload)
+        cleaned_df = clean_uploaded_data(df_upload)
 
-            st.subheader("🧹 Cleaned Data Preview")
-            st.dataframe(cleaned_df)
+        st.subheader("Cleaned Data Preview")
+        st.dataframe(cleaned_df)
 
-            if st.button("Add to Dashboard"):
-                expenses = pd.concat([expenses, cleaned_df], ignore_index=True)
-                save_data(expenses)
-                st.success("Data Imported Successfully 🎉")
-                st.rerun()
+        if st.button("Add to Dashboard"):
+            expenses = pd.concat([expenses, cleaned_df], ignore_index=True)
+            save_data(expenses)
+            st.success("File imported successfully 🎉")
+            st.rerun()
 
-        except Exception as e:
-            st.error(f"Error reading file: {e}")
-
+# -------------------------------
+# VIEW DASHBOARD (AUTO)
+# -------------------------------
 if menu == "View Dashboard":
     st.header("📈 Expense Analytics")
 
     if expenses.empty:
-        st.warning("No data available.")
+        st.warning("No data available")
+        st.stop()
+
+    # -------- FILTERS --------
+    st.subheader("🔍 Filters")
+
+    f1, f2, f3, f4 = st.columns(4)
+
+    with f1:
+        start_date = st.date_input("Start Date", expenses["Date"].min())
+
+    with f2:
+        end_date = st.date_input("End Date", expenses["Date"].max())
+
+    with f3:
+        sites = st.multiselect("Site", expenses["Site"].unique(), expenses["Site"].unique())
+
+    with f4:
+        supervisors = st.multiselect("Supervisor", expenses["Supervisor"].unique(), expenses["Supervisor"].unique())
+
+    filtered = expenses[
+        (expenses["Date"] >= pd.to_datetime(start_date)) &
+        (expenses["Date"] <= pd.to_datetime(end_date)) &
+        (expenses["Site"].isin(sites)) &
+        (expenses["Supervisor"].isin(supervisors))
+    ]
+
+    # -------- KPIs --------
+    k1, k2, k3, k4 = st.columns(4)
+
+    k1.metric("💰 Total Spend", f"₹ {filtered['Amount'].sum():,.2f}")
+    k2.metric("📄 Records", len(filtered))
+    k3.metric("🏗 Sites", filtered["Site"].nunique())
+    k4.metric("👨‍💼 Supervisors", filtered["Supervisor"].nunique())
+
+    st.divider()
+
+    # -------- TREND --------
+    trend = filtered.groupby("Date")["Amount"].sum().reset_index()
+    st.plotly_chart(
+        px.line(trend, x="Date", y="Amount", title="Expense Trend", markers=True),
+        use_container_width=True
+    )
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.plotly_chart(
+            px.pie(filtered, names="Category", values="Amount", title="Category-wise Spend"),
+            use_container_width=True
+        )
+
+    with c2:
+        site_data = filtered.groupby("Site")["Amount"].sum().reset_index()
+        st.plotly_chart(
+            px.bar(site_data, x="Site", y="Amount", title="Site-wise Spend"),
+            use_container_width=True
+        )
+
+    # -------- SPIKE DETECTION --------
+    st.subheader("🚨 Expense Alerts")
+
+    avg = filtered["Amount"].mean()
+    spikes = filtered[filtered["Amount"] > avg * 2]
+
+    if not spikes.empty:
+        st.error("High expense entries detected")
+        st.dataframe(spikes)
     else:
-        colA, colB, colC = st.columns(3)
+        st.success("No abnormal expenses detected")
 
-        colA.metric("Total Spending", f"₹ {expenses['Amount'].sum():,.2f}")
-        colB.metric("Total Entries", len(expenses))
-        colC.metric("Total Sites", expenses["Site"].nunique())
+    st.download_button(
+        "⬇ Download Report",
+        data=filtered.to_csv(index=False),
+        file_name="expense_report.csv"
+    )
 
-        st.divider()
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            fig_cat = px.pie(
-                expenses,
-                names="Category",
-                values="Amount",
-                title="Category-wise Expense"
-            )
-            st.plotly_chart(fig_cat, use_container_width=True)
-
-        with col2:
-            fig_day = px.bar(
-                expenses,
-                x="Date",
-                y="Amount",
-                color="Category",
-                title="Daily Expenses"
-            )
-            st.plotly_chart(fig_day, use_container_width=True)
-
-        col3, col4 = st.columns(2)
-
-        with col3:
-            site_data = expenses.groupby("Site")["Amount"].sum().reset_index()
-            fig_site = px.bar(
-                site_data,
-                x="Site",
-                y="Amount",
-                title="Site-wise Expense"
-            )
-            st.plotly_chart(fig_site, use_container_width=True)
-
-        with col4:
-            sup_data = expenses.groupby("Supervisor")["Amount"].sum().reset_index()
-            fig_sup = px.bar(
-                sup_data,
-                x="Supervisor",
-                y="Amount",
-                title="Supervisor-wise Expense"
-            )
-            st.plotly_chart(fig_sup, use_container_width=True)
-
+# -------------------------------
+# DATA TABLE
+# -------------------------------
 if menu == "Data Table":
     st.header("📄 Expense Records")
 
     if expenses.empty:
-        st.warning("No records found.")
+        st.warning("No records found")
     else:
         st.dataframe(expenses, use_container_width=True)
 
@@ -231,5 +223,3 @@ if menu == "Data Table":
             save_data(pd.DataFrame(columns=expenses.columns))
             st.success("All data cleared")
             st.rerun()
-
-
